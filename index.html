@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>RayCraft Animation Combined 3 Scenes</title>
+<style>
+html, body {
+  margin:0; padding:0; background:black; overflow:hidden;
+}
+canvas { display:block; }
+.logo {
+  position:absolute; inset:0; display:flex; justify-content:center; align-items:center;
+  font-family:"Georgia", serif; font-size:64px; letter-spacing:2px;
+  color: rgba(255,220,170,0);
+  text-shadow: 0 0 30px rgba(255,200,140,0);
+  transition: opacity 2s ease, text-shadow 2s ease;
+  pointer-events:none;
+}
+.logo.show {
+  color: rgba(255,220,170,1);
+  text-shadow:0 0 20px rgba(255,200,140,0.6),0 0 40px rgba(255,180,100,0.4);
+}
+</style>
+</head>
+<body>
+
+<canvas id="canvas"></canvas>
+<div id="logo" class="logo">RayCraft</div>
+
+<script>
+const canvas=document.getElementById("canvas");
+const ctx=canvas.getContext("2d");
+canvas.width=window.innerWidth;
+canvas.height=window.innerHeight;
+const center={x:canvas.width/2,y:canvas.height/2};
+let startTime=null;
+
+// Scene durations
+const durationScene1=30000;
+const durationScene2=30000;
+const durationScene3=30000;
+const totalDuration=durationScene1+durationScene2+durationScene3;
+
+// --- Scene 1: Black hole pull ---
+const particles=[];
+const charactersScene1=[];
+for(let i=0;i<120;i++){
+  particles.push({angle:Math.random()*Math.PI*2,radius:Math.random()*250+50,speed:Math.random()*0.002+0.001});
+}
+for(let i=0;i<15;i++){
+  charactersScene1.push({x:Math.random()*canvas.width,y:Math.random()*canvas.height,size:Math.random()*4+2,speed:Math.random()*0.3+0.1,trail:[]});
+}
+
+// --- Scene 2: Rising light ---
+const seed={x:canvas.width/2,y:canvas.height*0.8,size:4,halo:0};
+const charactersScene2=[];
+for(let i=0;i<12;i++){
+  charactersScene2.push({angle:Math.random()*Math.PI*2,radius:Math.random()*60+40,speed:Math.random()*0.01+0.003,size:Math.random()*3+2,trail:[]});
+}
+
+// --- Scene 3: Wandering humanoids ---
+const charactersScene3=[];
+for(let i=0;i<20;i++){
+  charactersScene3.push({x:Math.random()*canvas.width,y:Math.random()*canvas.height,size:Math.random()*3+2,angle:Math.random()*Math.PI*2,speed:Math.random()*0.5+0.1,trail:[]});
+}
+const clock={x:canvas.width/2,y:canvas.height/3,radius:80};
+
+function drawTrail(trail){
+  for(let i=0;i<trail.length;i++){
+    const p=trail[i];
+    ctx.fillStyle=`rgba(180,220,255,${(i+1)/trail.length*0.3})`;
+    ctx.beginPath();
+    ctx.arc(p.x,p.y,p.size*0.6,0,Math.PI*2);
+    ctx.fill();
+  }
+}
+
+function draw(time){
+  if(!startTime) startTime=time;
+  const elapsed=time-startTime;
+
+  // Fade previous frame
+  ctx.fillStyle="rgba(0,0,0,0.2)";
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  // Background stars
+  ctx.fillStyle="rgba(255,255,255,0.05)";
+  for(let i=0;i<80;i++){
+    ctx.beginPath();
+    ctx.arc(Math.random()*canvas.width, Math.random()*canvas.height, Math.random()*1.5,0,Math.PI*2);
+    ctx.fill();
+  }
+
+  if(elapsed<=durationScene1){
+    // Scene 1
+    const progress=elapsed/durationScene1;
+    let intensity=0.4;
+    if(progress>0.15) intensity += (progress-0.15)*1.2;
+    intensity=Math.min(intensity,1);
+    const gradient=ctx.createRadialGradient(center.x,center.y,0,center.x,center.y,120);
+    gradient.addColorStop(0, `rgba(255,220,170,${intensity})`);
+    gradient.addColorStop(1,"rgba(0,0,0,0)");
+    ctx.fillStyle=gradient;
+    ctx.beginPath(); ctx.arc(center.x,center.y,120,0,Math.PI*2); ctx.fill();
+
+    if(progress>0.3&&progress<0.8){
+      particles.forEach(p=>{
+        p.angle += p.speed*(1+progress*3);
+        const x=center.x+Math.cos(p.angle)*p.radius;
+        const y=center.y+Math.sin(p.angle)*p.radius;
+        ctx.fillStyle="rgba(255,200,140,0.5)";
+        ctx.beginPath(); ctx.arc(x,y,1.5,0,Math.PI*2); ctx.fill();
+      });
+    }
+
+    charactersScene1.forEach(c=>{
+      c.trail.push({x:c.x,y:c.y,size:c.size});
+      if(c.trail.length>15) c.trail.shift();
+      drawTrail(c.trail);
+      const dx=center.x-c.x;
+      const dy=center.y-c.y;
+      c.x+=dx*0.002*(1+progress*2);
+      c.y+=dy*0.002*(1+progress*2);
+      ctx.fillStyle="rgba(180,220,255,0.9)";
+      ctx.beginPath(); ctx.arc(c.x,c.y,c.size,0,Math.PI*2); ctx.fill();
+      ctx.strokeStyle="rgba(180,220,255,0.4)";
+      ctx.beginPath();
+      ctx.moveTo(c.x, c.y-c.size*2);
+      ctx.lineTo(c.x, c.y+c.size*2);
+      ctx.moveTo(c.x-c.size, c.y);
+      ctx.lineTo(c.x+c.size, c.y);
+      ctx.stroke();
+    });
+
+  } else if(elapsed<=durationScene1+durationScene2){
+    // Scene 2
+    const progress=(elapsed-durationScene1)/durationScene2;
+    if(progress>0 && progress<0.4){ seed.y-=0.3; seed.halo+=0.2; }
+    ctx.fillStyle="rgba(255,220,180,0.8)";
+    ctx.beginPath(); ctx.arc(seed.x,seed.y,seed.size,0,Math.PI*2); ctx.fill();
+    ctx.strokeStyle=`rgba(255,220,180,0.3)`; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.arc(seed.x,seed.y,seed.halo,0,Math.PI*2); ctx.stroke();
+
+    charactersScene2.forEach(c=>{
+      c.angle += c.speed*(1+progress*2);
+      const x=seed.x+Math.cos(c.angle)*c.radius;
+      const y=seed.y+Math.sin(c.angle)*c.radius;
+      c.trail.push({x,y,size:c.size});
+      if(c.trail.length>15) c.trail.shift();
+      drawTrail(c.trail);
+      ctx.fillStyle="rgba(180,220,255,0.9)";
+      ctx.beginPath(); ctx.arc(x,y,c.size,0,Math.PI*2); ctx.fill();
+    });
+
+    if(progress>0.6){
+      ctx.strokeStyle="rgba(255,220,180,0.3)"; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.moveTo(seed.x,seed.y); ctx.lineTo(seed.x,seed.y-progress*150); ctx.stroke();
+    }
+
+  } else {
+    // Scene 3
+    const progress=(elapsed-durationScene1-durationScene2)/durationScene3;
+
+    charactersScene3.forEach(c=>{
+      c.angle+=(Math.random()-0.5)*0.02;
+      c.x+=Math.cos(c.angle)*c.speed;
+      c.y+=Math.sin(c.angle)*c.speed;
+      if(c.x<0) c.x=canvas.width; if(c.x>canvas.width) c.x=0;
+      if(c.y<0) c.y=canvas.height; if(c.y>canvas.height) c.y=0;
+      c.trail.push({x:c.x,y:c.y,size:c.size});
+      if(c.trail.length>15) c.trail.shift();
+      drawTrail(c.trail);
+      ctx.fillStyle="rgba(180,220,255,0.9)";
+      ctx.beginPath(); ctx.arc(c.x,c.y,c.size,0,Math.PI*2); ctx.fill();
+    });
+
+    // Clock
+    ctx.save();
+    ctx.translate(clock.x,clock.y);
+    ctx.strokeStyle="rgba(255,200,150,0.3)"; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.arc(0,0,clock.radius,0,Math.PI*2); ctx.stroke();
+    const angleSec=(progress*60/60*2*Math.PI)-Math.PI/2;
+    ctx.strokeStyle="rgba(255,200,150,0.5)"; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.moveTo(0,0);
+    ctx.lineTo(Math.cos(angleSec)*clock.radius*0.9, Math.sin(angleSec)*clock.radius*0.9);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // Logo final reveal
+  if(elapsed>totalDuration-2000) document.getElementById("logo").classList.add("show");
+
+  if(elapsed<totalDuration) requestAnimationFrame(draw);
+}
+
+requestAnimationFrame(draw);
+</script>
+
+</body>
+</html>
